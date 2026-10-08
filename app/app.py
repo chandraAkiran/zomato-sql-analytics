@@ -110,20 +110,23 @@ footer {
 # =========================================================
 @st.cache_resource
 def get_connection():
+    return psycopg2.connect(
+        st.secrets["DATABASE_URL"],
+        connect_timeout=10
+    )
 
-    database_url = os.getenv("DATABASE_URL")
+def run_query(query, params=None):
+    conn = get_connection()
 
-    if not database_url:
-        try:
-            database_url = st.secrets["DATABASE_URL"]
-        except Exception:
-            database_url = None
-
-    if not database_url:
-        st.error("Database connection is not configured.")
-        st.stop()
-
-    return psycopg2.connect(database_url)
+    try:
+        return pd.read_sql_query(
+            query,
+            conn,
+            params=params
+        )
+    except (psycopg2.InterfaceError, psycopg2.OperationalError):
+        get_connection.clear()
+        raise
 
 
 conn = get_connection()
